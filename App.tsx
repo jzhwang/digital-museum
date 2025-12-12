@@ -3,7 +3,31 @@ import SearchInput from './components/SearchInput';
 import AnalysisView from './components/AnalysisView';
 import { analyzeArtifact, generateHeroImage } from './services/geminiService';
 import { AnalysisState } from './types';
-import { ScrollText, Github } from 'lucide-react';
+import { ScrollText, Github, Landmark, MapPin } from 'lucide-react';
+
+// 全球排名前20的博物馆/美术馆
+const TOP_MUSEUMS = [
+  { name: '卢浮宫', location: '巴黎, 法国', icon: '🇫🇷' },
+  { name: '大英博物馆', location: '伦敦, 英国', icon: '🇬🇧' },
+  { name: '大都会艺术博物馆', location: '纽约, 美国', icon: '🇺🇸' },
+  { name: '梵蒂冈博物馆', location: '梵蒂冈城', icon: '🇻🇦' },
+  { name: '故宫博物院', location: '北京, 中国', icon: '🇨🇳' },
+  { name: '艾尔米塔什博物馆', location: '圣彼得堡, 俄罗斯', icon: '🇷🇺' },
+  { name: '普拉多博物馆', location: '马德里, 西班牙', icon: '🇪🇸' },
+  { name: '乌菲兹美术馆', location: '佛罗伦萨, 意大利', icon: '🇮🇹' },
+  { name: '国家美术馆', location: '伦敦, 英国', icon: '🇬🇧' },
+  { name: '泰特现代美术馆', location: '伦敦, 英国', icon: '🇬🇧' },
+  { name: '奥赛博物馆', location: '巴黎, 法国', icon: '🇫🇷' },
+  { name: '中国国家博物馆', location: '北京, 中国', icon: '🇨🇳' },
+  { name: '美国自然历史博物馆', location: '纽约, 美国', icon: '🇺🇸' },
+  { name: '维多利亚和阿尔伯特博物馆', location: '伦敦, 英国', icon: '🇬🇧' },
+  { name: '芝加哥艺术博物馆', location: '芝加哥, 美国', icon: '🇺🇸' },
+  { name: '阿姆斯特丹国家博物馆', location: '阿姆斯特丹, 荷兰', icon: '🇳🇱' },
+  { name: '东京国立博物馆', location: '东京, 日本', icon: '🇯🇵' },
+  { name: '台北故宫博物院', location: '台北, 中国', icon: '🇨🇳' },
+  { name: '上海博物馆', location: '上海, 中国', icon: '🇨🇳' },
+  { name: '陕西历史博物馆', location: '西安, 中国', icon: '🇨🇳' }
+];
 
 const App: React.FC = () => {
   const [state, setState] = useState<AnalysisState>({
@@ -12,10 +36,19 @@ const App: React.FC = () => {
     error: null,
     heroImage: null,
     generatingImage: false,
+    sourceMuseum: null,
   });
 
-  const handleSearch = useCallback(async (term: string) => {
-    setState(prev => ({ ...prev, loading: true, error: null, data: null, heroImage: null }));
+  const handleSearch = useCallback(async (term: string, keepSourceMuseum: boolean = false) => {
+    setState(prev => ({
+      ...prev,
+      loading: true,
+      error: null,
+      data: null,
+      heroImage: null,
+      // 如果不是从博物馆点击进来的，清除来源博物馆
+      sourceMuseum: keepSourceMuseum ? prev.sourceMuseum : null
+    }));
 
     try {
       // 1. Text Analysis (Classify & Analyze)
@@ -45,10 +78,21 @@ const App: React.FC = () => {
       }
 
     } catch (err: any) {
+      let errorMessage = "Failed to analyze input. Please try again.";
+
+      // 检测 API 配额错误
+      if (err.message && err.message.includes("429")) {
+        errorMessage = "⚠️ API 配额已达上限。请稍后再试，或联系管理员更换 API 密钥。";
+      } else if (err.message && err.message.includes("quota")) {
+        errorMessage = "⚠️ API 使用配额已用完。请等待配额重置或升级计划。";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
       setState(prev => ({
         ...prev,
         loading: false,
-        error: err.message || "Failed to analyze input. Please try again.",
+        error: errorMessage,
         generatingImage: false
       }));
     }
@@ -98,6 +142,85 @@ const App: React.FC = () => {
     }
   }, [state.data]);
 
+  // 从博物馆点击文物时的处理函数
+  const handleSearchFromMuseum = useCallback(async (term: string) => {
+    // 保存当前的博物馆数据
+    const currentMuseum = state.data?.resultType === 'MUSEUM' ? state.data.museum : null;
+
+    setState(prev => ({
+      ...prev,
+      loading: true,
+      error: null,
+      data: null,
+      heroImage: null,
+      sourceMuseum: currentMuseum
+    }));
+
+    try {
+      // 1. Text Analysis (Classify & Analyze)
+      const data = await analyzeArtifact(term);
+
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        data,
+        sourceMuseum: currentMuseum,
+        // Only start generating hero image if it is an ARTIFACT
+        generatingImage: data.resultType === 'ARTIFACT'
+      }));
+
+      // 2. Image Generation (Only for Artifacts)
+      if (data.resultType === 'ARTIFACT' && data.artifact) {
+         // Use the frontal prompt or a constructed one for the "Hero" shot
+        const heroPrompt = data.artifact.imagePrompts.find(p => p.angle.toLowerCase().includes('front'))?.prompt
+          || `High quality museum photography of ${data.artifact.standardName}, ${data.artifact.material}, black background, studio lighting`;
+
+        const imageUrl = await generateHeroImage(heroPrompt);
+
+        setState(prev => ({
+          ...prev,
+          heroImage: imageUrl,
+          generatingImage: false
+        }));
+      }
+
+    } catch (err: any) {
+      let errorMessage = "Failed to analyze input. Please try again.";
+
+      // 检测 API 配额错误
+      if (err.message && err.message.includes("429")) {
+        errorMessage = "⚠️ API 配额已达上限。请稍后再试，或联系管理员更换 API 密钥。";
+      } else if (err.message && err.message.includes("quota")) {
+        errorMessage = "⚠️ API 使用配额已用完。请等待配额重置或升级计划。";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: errorMessage,
+        generatingImage: false,
+        sourceMuseum: currentMuseum
+      }));
+    }
+  }, [state.data]);
+
+  // 返回到博物馆页面
+  const handleBackToMuseum = useCallback(() => {
+    if (state.sourceMuseum) {
+      setState(prev => ({
+        ...prev,
+        data: {
+          resultType: 'MUSEUM',
+          museum: prev.sourceMuseum!
+        },
+        heroImage: null,
+        generatingImage: false
+      }));
+    }
+  }, [state.sourceMuseum]);
+
   return (
     <div className="min-h-screen bg-museum-900 text-museum-50 selection:bg-museum-gold selection:text-black font-sans flex flex-col">
       
@@ -116,8 +239,53 @@ const App: React.FC = () => {
       <main className="flex-grow flex flex-col items-center justify-center p-4 md:p-8 w-full">
         
         {!state.data && !state.loading && (
-           <div className="flex-grow flex items-center justify-center w-full min-h-[60vh]">
-             <SearchInput onSearch={handleSearch} isLoading={state.loading} />
+           <div className="flex-grow flex flex-col items-center justify-start w-full max-w-7xl mx-auto py-6 md:py-10">
+             {/* 搜索框 */}
+             <div className="w-full mb-10 md:mb-12">
+               <SearchInput
+                 onSearch={handleSearch}
+                 isLoading={state.loading}
+                 error={state.error}
+                 onClearError={() => setState(prev => ({...prev, error: null}))}
+               />
+             </div>
+
+             {/* 博物馆推荐列表 */}
+             <div className="w-full">
+               <div className="text-center mb-6 md:mb-8">
+                 <h2 className="text-2xl md:text-3xl font-serif text-museum-gold mb-3 flex items-center justify-center gap-2 md:gap-3">
+                   <Landmark size={24} className="md:w-7 md:h-7" />
+                   <span>全球顶级博物馆 / 美术馆</span>
+                 </h2>
+                 <p className="text-gray-500 text-xs md:text-sm px-4">点击探索世界级文化殿堂的珍贵藏品</p>
+               </div>
+
+               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+                 {TOP_MUSEUMS.map((museum, index) => (
+                   <button
+                     key={index}
+                     onClick={() => handleSearch(museum.name)}
+                     className="group relative bg-museum-800/30 border border-museum-700 rounded-lg p-4 md:p-5 text-left transition-all duration-300 hover:bg-museum-800 hover:border-museum-gold/60 hover:shadow-xl hover:-translate-y-1"
+                   >
+                     <div className="absolute top-2 right-2 md:top-3 md:right-3 text-lg md:text-2xl opacity-70 group-hover:scale-110 transition-transform">
+                       {museum.icon}
+                     </div>
+                     <div className="absolute top-2 left-2 md:top-3 md:left-3 text-[10px] md:text-xs font-mono text-museum-gold/40">
+                       #{String(index + 1).padStart(2, '0')}
+                     </div>
+                     <div className="mt-5 md:mt-6">
+                       <h3 className="text-sm md:text-base font-serif text-museum-100 group-hover:text-museum-gold transition-colors mb-1.5 md:mb-2 pr-6 md:pr-8 leading-tight">
+                         {museum.name}
+                       </h3>
+                       <p className="text-[10px] md:text-xs text-gray-500 flex items-center gap-1">
+                         <MapPin size={10} className="md:w-3 md:h-3 flex-shrink-0" />
+                         <span className="line-clamp-1">{museum.location}</span>
+                       </p>
+                     </div>
+                   </button>
+                 ))}
+               </div>
+             </div>
            </div>
         )}
 
@@ -134,19 +302,6 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {state.error && (
-          <div className="text-center space-y-4 max-w-lg mx-auto bg-red-900/10 border border-red-900/30 p-8 rounded-lg">
-            <h3 className="text-red-400 font-serif text-2xl">Entry Not Found</h3>
-            <p className="text-gray-400">{state.error}</p>
-            <button 
-              onClick={() => setState(prev => ({...prev, error: null}))}
-              className="text-museum-gold underline hover:text-white transition-colors"
-            >
-              Try Another Search
-            </button>
-          </div>
-        )}
-
         {state.data && !state.loading && (
           <div className="w-full animate-slideUp">
             <div className="mb-8">
@@ -157,12 +312,15 @@ const App: React.FC = () => {
                  ← New Curator Request
                </button>
             </div>
-            <AnalysisView 
-              data={state.data} 
-              heroImage={state.heroImage} 
-              isGeneratingImage={state.generatingImage} 
+            <AnalysisView
+              data={state.data}
+              heroImage={state.heroImage}
+              isGeneratingImage={state.generatingImage}
               onGenerateAngle={handleGenerateAngle}
               onSearch={handleSearch}
+              onSearchFromMuseum={handleSearchFromMuseum}
+              onBackToMuseum={handleBackToMuseum}
+              sourceMuseum={state.sourceMuseum}
             />
           </div>
         )}

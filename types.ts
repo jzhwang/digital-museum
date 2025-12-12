@@ -51,4 +51,5 @@ export interface AnalysisState {
   error: string | null;
   heroImage: string | null;
   generatingImage: boolean;
+  sourceMuseum?: MuseumData | null; // 记录来源博物馆
 }

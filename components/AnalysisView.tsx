@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AnalysisResult } from '../types';
-import { Landmark, Calendar, PenTool, User, MapPin, Eye, Camera, Info, ImagePlus, Loader2, RefreshCw, ChevronRight } from 'lucide-react';
+import { AnalysisResult, MuseumData } from '../types';
+import { Landmark, Calendar, PenTool, User, MapPin, Eye, Camera, Info, ImagePlus, Loader2, RefreshCw, ChevronRight, ArrowLeft } from 'lucide-react';
 
 interface AnalysisViewProps {
   data: AnalysisResult;
@@ -8,9 +8,21 @@ interface AnalysisViewProps {
   isGeneratingImage: boolean;
   onGenerateAngle: (index: number) => void;
   onSearch: (term: string) => void;
+  onSearchFromMuseum: (term: string) => void;
+  onBackToMuseum: () => void;
+  sourceMuseum?: MuseumData | null;
 }
 
-const AnalysisView: React.FC<AnalysisViewProps> = ({ data, heroImage, isGeneratingImage, onGenerateAngle, onSearch }) => {
+const AnalysisView: React.FC<AnalysisViewProps> = ({
+  data,
+  heroImage,
+  isGeneratingImage,
+  onGenerateAngle,
+  onSearch,
+  onSearchFromMuseum,
+  onBackToMuseum,
+  sourceMuseum
+}) => {
   const [imgError, setImgError] = useState<boolean>(false);
 
   // Reset error state when data changes (new search result)
@@ -60,23 +72,29 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ data, heroImage, isGenerati
                 <h2 className="text-2xl font-serif text-museum-gold mb-8 text-center flex items-center justify-center gap-3">
                     <span>❖</span> 镇馆之宝 / 核心馆藏 <span>❖</span>
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="text-center text-sm text-gray-500 mb-6">
+                    共收录 {m.treasures.length} 件珍贵藏品
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {m.treasures.map((item, idx) => (
-                        <button 
+                        <button
                             key={idx}
-                            onClick={() => onSearch(item.name)}
-                            className="group relative bg-museum-800/40 border border-museum-700 p-6 rounded-lg text-left transition-all duration-300 hover:bg-museum-800 hover:border-museum-gold/60 hover:shadow-2xl hover:-translate-y-1"
+                            onClick={() => onSearchFromMuseum(item.name)}
+                            className="group relative bg-museum-800/40 border border-museum-700 p-5 rounded-lg text-left transition-all duration-300 hover:bg-museum-800 hover:border-museum-gold/60 hover:shadow-2xl hover:-translate-y-1"
                         >
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h3 className="text-xl font-serif text-museum-100 group-hover:text-museum-gold transition-colors mb-2">
+                            <div className="absolute top-3 left-3 text-xs font-mono text-museum-gold/50">
+                                #{String(idx + 1).padStart(2, '0')}
+                            </div>
+                            <div className="flex justify-between items-start mt-4">
+                                <div className="flex-1 pr-2">
+                                    <h3 className="text-lg font-serif text-museum-100 group-hover:text-museum-gold transition-colors mb-2 leading-tight">
                                         {item.name}
                                     </h3>
-                                    <p className="text-sm text-gray-500 group-hover:text-gray-400 font-sans">
+                                    <p className="text-xs text-gray-500 group-hover:text-gray-400 font-sans leading-relaxed">
                                         {item.reason}
                                     </p>
                                 </div>
-                                <ChevronRight className="text-museum-700 group-hover:text-museum-gold transition-colors opacity-0 group-hover:opacity-100" />
+                                <ChevronRight className="text-museum-700 group-hover:text-museum-gold transition-colors opacity-0 group-hover:opacity-100 flex-shrink-0 mt-1" size={20} />
                             </div>
                         </button>
                     ))}
@@ -99,6 +117,23 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({ data, heroImage, isGenerati
 
       return (
         <div className="w-full max-w-6xl mx-auto space-y-12 animate-fadeIn pb-20">
+
+        {/* Back to Museum Button */}
+        {sourceMuseum && (
+          <div className="mb-6">
+            <button
+              onClick={onBackToMuseum}
+              className="flex items-center gap-3 px-6 py-3 bg-museum-800/40 border border-museum-700 rounded-lg text-gray-300 hover:text-museum-gold hover:border-museum-gold/60 hover:bg-museum-800 transition-all group"
+            >
+              <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+              <div className="flex flex-col items-start">
+                <span className="text-xs text-gray-500 uppercase tracking-wide">返回镇馆之宝</span>
+                <span className="font-serif text-sm">{sourceMuseum.name}</span>
+              </div>
+            </button>
+          </div>
+        )}
+
         {/* Header Section */}
         <header className="text-center space-y-4 border-b border-museum-700 pb-8">
             <h1 className="text-4xl md:text-6xl font-serif text-museum-gold tracking-wide">

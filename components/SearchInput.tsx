@@ -4,9 +4,11 @@ import { Search, Sparkles } from 'lucide-react';
 interface SearchInputProps {
   onSearch: (term: string) => void;
   isLoading: boolean;
+  error?: string | null;
+  onClearError?: () => void;
 }
 
-const SearchInput: React.FC<SearchInputProps> = ({ onSearch, isLoading }) => {
+const SearchInput: React.FC<SearchInputProps> = ({ onSearch, isLoading, error, onClearError }) => {
   const [term, setTerm] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -17,19 +19,14 @@ const SearchInput: React.FC<SearchInputProps> = ({ onSearch, isLoading }) => {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto text-center space-y-8 animate-fadeIn">
-      <div className="space-y-4">
-        <div className="inline-block p-3 rounded-full bg-museum-800/50 border border-museum-700 mb-4">
-            <Sparkles className="text-museum-gold" size={32} />
-        </div>
-        <h1 className="text-5xl md:text-7xl font-serif text-museum-100 tracking-tight">
+    <div className="w-full max-w-2xl mx-auto text-center space-y-6 animate-fadeIn">
+      <div className="space-y-3">
+        <h1 className="text-5xl md:text-7xl font-serif text-museum-100 tracking-tight flex items-center justify-center gap-4">
+          <Sparkles className="text-museum-gold" size={40} />
           Digital Curator
         </h1>
-        <p className="text-xl text-museum-gold/80 font-serif italic">
+        <p className="text-lg text-museum-gold/80 font-serif italic">
           Explore history through the lens of AI
-        </p>
-        <p className="text-sm text-gray-500 max-w-md mx-auto">
-          Enter the name of any artifact—Ancient Chinese Bronze, Renaissance Sculpture, or forgotten relic—to generate a museum-grade curation.
         </p>
       </div>
 
@@ -40,7 +37,7 @@ const SearchInput: React.FC<SearchInputProps> = ({ onSearch, isLoading }) => {
             type="text"
             value={term}
             onChange={(e) => setTerm(e.target.value)}
-            placeholder="e.g. 中国国家博物馆, 司母戊鼎, Rosetta Stone..."
+            placeholder="输入博物馆或文物名称..."
             disabled={isLoading}
             className="w-full bg-transparent text-museum-50 px-6 py-4 text-lg focus:outline-none placeholder-gray-600 font-serif"
           />
@@ -59,22 +56,20 @@ const SearchInput: React.FC<SearchInputProps> = ({ onSearch, isLoading }) => {
         </div>
       </form>
 
-      {/* Suggested chips */}
-      <div className="flex flex-wrap justify-center gap-2 opacity-60 text-xs">
-          {[
-            "中国国家博物馆", 
-            "故宫博物院", 
-            "大英博物馆", 
-            "卢浮宫", 
-            "大都会艺术博物馆", 
-            "越王勾践剑", 
-            "Rosetta Stone"
-          ].map(s => (
-              <button key={s} onClick={() => { setTerm(s); onSearch(s); }} className="hover:text-museum-gold transition-colors underline decoration-dotted">
-                  {s}
-              </button>
-          ))}
-      </div>
+      {/* 错误提示 */}
+      {error && (
+        <div className="bg-red-900/10 border border-red-900/30 p-4 rounded-lg text-center animate-fadeIn">
+          <p className="text-red-400 text-sm">{error}</p>
+          {onClearError && (
+            <button
+              onClick={onClearError}
+              className="text-museum-gold underline hover:text-white transition-colors mt-2 text-xs"
+            >
+              重新尝试
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
