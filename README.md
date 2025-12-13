@@ -6,7 +6,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1hizm-7mo6F7LqA8A7vs9ERim8y2k8VhZ
+View your app in AI Studio: https://jessica-digital-museum.vercel.app/
 
 ## Run Locally
 
