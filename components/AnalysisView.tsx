@@ -268,8 +268,8 @@ const AnalysisView: React.FC<AnalysisViewProps> = ({
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {art.imagePrompts.slice(0, 10).map((item, index) => (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {art.imagePrompts.map((item, index) => (
                     <div key={index} className="flex flex-col gap-2">
                         <div className="relative aspect-square bg-black/40 border border-museum-700 rounded overflow-hidden group hover:border-museum-gold/50 transition-colors">
                             {item.imageUrl ? (

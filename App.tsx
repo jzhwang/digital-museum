@@ -62,19 +62,29 @@ const App: React.FC = () => {
         generatingImage: data.resultType === 'ARTIFACT' 
       }));
 
-      // 2. Image Generation (Only for Artifacts)
+      // 2. Image Generation (Only for Artifacts without preset images)
       if (data.resultType === 'ARTIFACT' && data.artifact) {
-         // Use the frontal prompt or a constructed one for the "Hero" shot
-        const heroPrompt = data.artifact.imagePrompts.find(p => p.angle.toLowerCase().includes('front'))?.prompt 
-          || `High quality museum photography of ${data.artifact.standardName}, ${data.artifact.material}, black background, studio lighting`;
-        
-        const imageUrl = await generateHeroImage(heroPrompt);
-        
-        setState(prev => ({
-          ...prev,
-          heroImage: imageUrl,
-          generatingImage: false
-        }));
+        // ✅ 如果已经有预设图片（imageUrl 不为空），就不需要生成 AI 图了
+        if (data.artifact.imageUrl && data.artifact.imageUrl !== "") {
+          console.log(`✅ 使用预设图片，跳过 AI 生成：${data.artifact.imageUrl}`);
+          setState(prev => ({
+            ...prev,
+            generatingImage: false
+          }));
+        } else {
+          // ⚠️ 只有在没有预设图片时才生成 AI 图
+          console.log(`🎨 未找到预设图片，开始生成 AI 图...`);
+          const heroPrompt = data.artifact.imagePrompts.find(p => p.angle.toLowerCase().includes('front'))?.prompt
+            || `High quality museum photography of ${data.artifact.standardName}, ${data.artifact.material}, black background, studio lighting`;
+
+          const imageUrl = await generateHeroImage(heroPrompt);
+
+          setState(prev => ({
+            ...prev,
+            heroImage: imageUrl,
+            generatingImage: false
+          }));
+        }
       }
 
     } catch (err: any) {
@@ -169,19 +179,31 @@ const App: React.FC = () => {
         generatingImage: data.resultType === 'ARTIFACT'
       }));
 
-      // 2. Image Generation (Only for Artifacts)
+      // 2. Image Generation (Only for Artifacts without preset images)
       if (data.resultType === 'ARTIFACT' && data.artifact) {
-         // Use the frontal prompt or a constructed one for the "Hero" shot
-        const heroPrompt = data.artifact.imagePrompts.find(p => p.angle.toLowerCase().includes('front'))?.prompt
-          || `High quality museum photography of ${data.artifact.standardName}, ${data.artifact.material}, black background, studio lighting`;
+        // ✅ 如果已经有预设图片（imageUrl 不为空），就不需要生成 AI 图了
+        if (data.artifact.imageUrl && data.artifact.imageUrl !== "") {
+          console.log(`✅ 使用预设图片，跳过 AI 生成：${data.artifact.imageUrl}`);
+          setState(prev => ({
+            ...prev,
+            generatingImage: false,
+            sourceMuseum: currentMuseum
+          }));
+        } else {
+          // ⚠️ 只有在没有预设图片时才生成 AI 图
+          console.log(`🎨 未找到预设图片，开始生成 AI 图...`);
+          const heroPrompt = data.artifact.imagePrompts.find(p => p.angle.toLowerCase().includes('front'))?.prompt
+            || `High quality museum photography of ${data.artifact.standardName}, ${data.artifact.material}, black background, studio lighting`;
 
-        const imageUrl = await generateHeroImage(heroPrompt);
+          const imageUrl = await generateHeroImage(heroPrompt);
 
-        setState(prev => ({
-          ...prev,
-          heroImage: imageUrl,
-          generatingImage: false
-        }));
+          setState(prev => ({
+            ...prev,
+            heroImage: imageUrl,
+            generatingImage: false,
+            sourceMuseum: currentMuseum
+          }));
+        }
       }
 
     } catch (err: any) {
@@ -269,9 +291,6 @@ const App: React.FC = () => {
                    >
                      <div className="absolute top-2 right-2 md:top-3 md:right-3 text-lg md:text-2xl opacity-70 group-hover:scale-110 transition-transform">
                        {museum.icon}
-                     </div>
-                     <div className="absolute top-2 left-2 md:top-3 md:left-3 text-[10px] md:text-xs font-mono text-museum-gold/40">
-                       #{String(index + 1).padStart(2, '0')}
                      </div>
                      <div className="mt-5 md:mt-6">
                        <h3 className="text-sm md:text-base font-serif text-museum-100 group-hover:text-museum-gold transition-colors mb-1.5 md:mb-2 pr-6 md:pr-8 leading-tight">
